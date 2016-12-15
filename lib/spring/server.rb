@@ -31,7 +31,12 @@ module Spring
       Spring.verify_environment
 
       write_pidfile
-      set_pgid
+      #
+      # Booting into the process group of the current session is Spring's way
+      # of attaching the server to the current user's session. This way when
+      # the user closes their terminal, Spring exits. If we want Spring to be
+      # able to start from a daemonized process, we cant set this.
+      # set_pgid
       ignore_signals
       set_exit_hook
       set_process_title
