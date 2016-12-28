@@ -81,18 +81,11 @@ module Spring
 
       require Spring.application_root_path.join("config", "application")
 
-      # config/environments/test.rb will have config.cache_classes = true. However
-      # we want it to be false so that we can reload files. This is a hack to
-      # override the effect of config.cache_classes = true. We can then actually
-      # set config.cache_classes = false after loading the environment.
       Rails::Application.initializer :initialize_dependency_mechanism, group: :all do
         ActiveSupport::Dependencies.mechanism = :load
       end
 
       require Spring.application_root_path.join("config", "environment")
-
-      @original_cache_classes = Rails.application.config.cache_classes
-      Rails.application.config.cache_classes = false
 
       disconnect_database
 
@@ -122,7 +115,7 @@ module Spring
       loop do
         IO.select [manager, @interrupt.first]
 
-        if terminating? || watcher_stale? || preload_failed?
+        if terminating? || preload_failed?
           exit
         else
           serve manager.recv_io(UNIXSocket)
@@ -145,11 +138,6 @@ module Spring
       connect_database
       setup command
 
-      if Rails.application.reloaders.any?(&:updated?)
-        ActionDispatch::Reloader.cleanup!
-        ActionDispatch::Reloader.prepare!
-      end
-
       pid = fork {
         IGNORE_SIGNALS.each { |sig| trap(sig, "DEFAULT") }
         trap("TERM", "DEFAULT")
@@ -162,14 +150,6 @@ module Spring
 
         # Load in the current env vars, except those which *were* changed when spring started
         env.each { |k, v| ENV[k] ||= v }
-
-        # requiring is faster, so if config.cache_classes was true in
-        # the environment's config file, then we can respect that from
-        # here on as we no longer need constant reloading.
-        if @original_cache_classes
-          ActiveSupport::Dependencies.mechanism = :require
-          Rails.application.config.cache_classes = true
-        end
 
         connect_database
         srand
