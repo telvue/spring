@@ -16,13 +16,16 @@ module Spring
     when :listen
       require_relative "watcher/listen"
       @watch_method = Watcher::Listen
+    when :null
+      require_relative "watcher/null"
+      @watch_method = Watcher::Null
     else
       @watch_method = method
     end
   end
 
   self.watch_interval = 0.2
-  self.watch_method = :polling
+  self.watch_method = :null
 
   def self.watcher
     @watcher ||= watch_method.new(Spring.application_root_path, watch_interval)
